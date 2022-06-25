@@ -1,0 +1,35 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "example.fullname" . }}-migrate
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "1"
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "example.selectorLabels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      initContainers:
+        - name: wait-db
+          image: alpine:3.16
+          command: ['/bin/sh', '-c', 'while ! nc -w 1 -z {{ include "example.dbAddress" . }}:{{ include "example.dbPort" . }}; do sleep 5; done']
+      containers:
+        - name: {{ .Chart.Name }}-migrate
+          image: "{{ .Values.image.repository }}:alembic-{{ required "Please set correct tag" .Values.image.tag }}"
+          command: ["alembic"]
+          args: ["-c", "/app/alembic.ini", "upgrade", "head"]
+          workingDir: /app
+          envFrom:
+          - configMapRef:
+              name: {{ .Chart.Name }}-app-envs
+          - configMapRef:
+              name: {{ .Chart.Name }}-common-envs

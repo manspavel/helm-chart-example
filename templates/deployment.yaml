@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "example.fullname" . }}
+  labels:
+    {{- include "example.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "example.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/envs: {{ include (print $.Template.BasePath "/configmap-envs.yaml") . | sha256sum }}
+      labels:
+        {{- include "example.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "example.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait-db
+          image: alpine:3.16
+          command: ['/bin/sh', '-c', 'while ! nc -w 1 -z {{ include "example.dbAddress" . }}:{{ include "example.dbPort" . }}; do sleep 5; done']
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:app-{{ required "Please set correct tag" .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+          - configMapRef:
+              name: {{ .Chart.Name }}-app-envs
+          - configMapRef:
+              name: {{ .Chart.Name }}-common-envs
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+          resources:
+            {{- pluck .Values.env .Values.resources | first | default .Values.resources._default | toYaml | nindent 12 }}
+          volumeMounts:
+            - name: logs
+              path: /app/logs
+
+        - name: filebeat
+          image: "{{ .Values.filebeat.repository }}:{{ .Values.filebeat.tag }}"
+          resources:
+            {{- toYaml .Values.filebeat.resources | nindent 12 }}
+          volumeMounts:
+            - name: logs
+              path: /app/logs
+            - name: filebeat-settings
+              mountPath: /usr/share/filebeat/filebeat.yml
+              subPath: filebeat.yml
+      volumes:
+        - name: logs
+          emptyDir: {}
+        - name: fllebeat-settings
+          configMap:
+            name: {{ .Chart.Name }}-filebeat-settings
+            items:
+              - key: filebeat.yml
+                path: filebeat.yml

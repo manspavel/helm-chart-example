@@ -1,0 +1,109 @@
+replicaCount: 1
+
+image:
+  repository: ecr.aws/example
+  pullPolicy: Always
+  tag: "0.0.1"
+
+imagePullSecrets:
+  - registry
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podSecurityContext:
+  runAsUser: 3000
+  runAsGroup: 3000
+  fsGroup: 3000
+
+securityContext:
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 3000
+
+service:
+  name: app
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  protocol: TCP
+
+ingresses:
+  _default:
+    - name: example-api
+      annotations:
+        nginx.org/client-max-body-size: "100m"
+        kubernetes.io/ingress.class: nginx
+      rules:
+        hosts:
+        - host: example.dev-stand.com
+          paths:
+          - path: /
+            service:
+              name: example
+              port: 8080
+  production:
+    - name: example-api
+      annotations:
+        nginx.org/client-max-body-size: "100m"
+        kubernetes.io/ingress.class: nginx
+      rules:
+        hosts:
+        - host: example.com
+          paths:
+          - path: /
+            service:
+              name: example
+              port: 8080
+
+envs:
+  app:
+    _default:
+      FIRST_ENV_APP: value1
+      SECOND_ENV_APP: value2
+    production:
+      FIRST_ENV_APP: value1
+      SECOND_ENV_APP: value2
+  alembic:
+    _default:
+      FIRST_ENV_ALEMBIC: value1
+      SECOND_ENV_ALEMBIC: value2
+    production:
+      FIRST_ENV_ALEMBIC: value1
+      SECOND_ENV_ALEMBIC: value2
+  common:
+    _default:
+      FIRST_ENV_COMMON: value1
+      SECOND_ENV_COMMON: value2
+    production:
+      FIRST_ENV_COMMON: value1
+      SECOND_ENV_COMMON: value2
+
+resources:
+  _default:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  production:
+    limits:
+      cpu: 300m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+filebeat:
+  repository: docker.elastic.co/beats/filebeat
+  tag: 8.2.3
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 10m
+      memory: 32Mi

@@ -1,0 +1,30 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-app-envs
+data:
+{{- range $key, $val := pluck .Values.env .Values.envs.app | first | default .Values.envs.app._default }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-alembic-envs
+data:
+{{- range $key, $val := pluck .Values.env .Values.envs.alembic | first | default .Values.envs.alembic._default }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}
+
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-common-envs
+data:
+{{- range $key, $val := pluck .Values.env .Values.envs.common | first | default .Values.envs.common._default }}
+  {{ $key }}: {{ $val | quote }}
+{{- end }}

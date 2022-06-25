@@ -1,0 +1,22 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Chart.Name }}-filebeat-settings
+data:
+  filebeat.yml: |
+    filebeat:
+      config:
+        modules:
+          path: /usr/share/filebeat/modules.d/*.yml
+          reload:
+            enabled: true
+      modules:
+      - module: nginx
+        access:
+          var.paths: ["/app/logs/common.log*"]
+        error:
+          var.paths: ["/app/logs/business.log*"]
+    output:
+      elasticsearch:
+        hosts: ["elasticsearch.logging.svc.cluster.local:9200"]
